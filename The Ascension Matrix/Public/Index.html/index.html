@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Hex'Ra Raid</title>
+
+  <!-- Medieval / Dark Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600&display=swap" rel="stylesheet">
+
+  <style>
+    body <div id="cinematicBars">
+    <div class="bar top"></div>
+    <div class="bar bottom"></div>
+    </div>
+
+    <div id="bossIntro" class="introText">
+                                         HEX'RA AWAKENS
+    </div>{<canvas id="vfx" style=/* 🎬 Cinematic Bars */
+      .bar {
+        position: fixed;
+        left: 0;
+        width: 100%;
+        height: 0;
+        background: black;
+        z-index: 1000;
+        transition: height 0.6s ease;
+      }
+
+        .bar.top { top: 0; }
+        .bar.bottom { bottom: 0; }
+
+        /* 🎥 Intro Text */
+        .introText {
+          position: fixed;
+          top: 40%;
+          width: 100%;
+          text-align: center;
+          font-size: 40px;
+          letter-spacing: 5px;
+          opacity: 0;
+          z-index: 1001;
+          text-shadow: 0 0 20px red;
+          transition: opacity 1s ease;
+        }
+
+        /* 🎥 Camera Zoom */
+        .zoom {
+          transform: scale(1.1);
+          transition: transform 1s ease;
+        }
+
+        /* 🌑 Phase Aura */
+        .phase2 {
+          animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+          0% { box-shadow: 0 0 10px red inset; }
+          50% { box-shadow: 0 0 50px red inset; }
+          100% { box-shadow: 0 0 10px red inset; }
+        }"
+      position:fixed;
+        top:0;
+        left:0;
+        width:100%;
+        height:100%;
+        pointer-events:none;
+        z-index:999;
+      "></canvas>
+      margin: 0;
+        background: radial-gradient(circle at center, #0a0a0a, #000);
+        color: white;
+        font-family: 'Cinzel', serif;
+        text-align: center;
+        overflow-x: hidden;
+      }
+
+    /* 🔥 Animated Void Background */
+    body::before {
+      content: "";
+      position: fixed;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255,0,100,0.08), transparent 70%);
+      animation: swirl 20s linear infinite;
+      z-index: -1;
+    }
+
+    @keyframes swirl {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* 👁 Boss Portrait */
+    .boss-frame {
+      margin-top: 20px;
+      border: 3px solid #aa0000;
+      display: inline-block;
+      padding: 5px;
+      box-shadow: 0 0 25px red;
+    }
+
+    .boss-frame img {
+      width: 180px;
+      height: 180px;
+      object-fit: cover;
+    }
+
+    /* 🔥 Boss Bar */
+    .boss-bar {
+      width: 70%;
+      height: 25px;
+      margin: 20px auto;
+      background: #111;
+      border: 2px solid #550000;
+      box-shadow: 0 0 15px red;
+    }
+
+    .boss-fill {
+      height: 100%;
+      background: linear-gradient(to right, red, purple);
+      transition: width 0.3s;
+    }
+
+    /* 💥 Screen Shake */
+    .shake {
+      animation: shake 0.3s;
+    }
+
+    @keyframes shake {
+      0% { transform: translate(0); }
+      25% { transform: translate(5px, -5px); }
+      50% { transform: translate(-5px, 5px); }
+      75% { transform: translate(5px, 5px); }
+      100% { transform: translate(0); }
+    }
+
+    /* 🌑 Phase Flash */
+    .flash {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: red;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* 🎮 Buttons */
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      font-size: 16px;
+      background: black;
+      color: white;
+      border: 2px solid red;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: darkred;
+    }
+
+    /* 📜 Panels */
+    .panel {
+      margin: 20px auto;
+      width: 60%;
+      background: rgba(0,0,0,0.6);
+      border: 1px solid #333;
+      padding: 10px;
+      box-shadow: 0 0 10px #000;
+    }
+
+  </style>
+</head>
+
+<body>
+
+<div class="flash" id="flash"></div>
+
+<h1 id="bossName">Hex'Ra</h1>
+
+<div class="boss-frame">
+  <!-- 🔥 REPLACE THIS WITH YOUR ART -->
+  <img src=<img src="your-art.png">
+</div>
+
+<div class="boss-bar">
+  <div id="hp" class="boss-fill"></div>
+</div>
+
+<div>
+  <button onclick="act('attack')">⚔ Attack</button>
+  <button onclick="act('heal')">❤️ Heal</button>
+  <button onclick="act('cleanse')">✨ Cleanse</button>
+  <button onclick="act('shield')">🛡 Shield</button>
+  <button onclick="respawn()">☠ Respawn</button>
+</div>
+
+<div class="panel" id="players"></div>
+<div class="panel" id="log"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+
+  socket.on("STATE", ({ boss, players }) => {
+    document.getElementById("bossName").innerText =
+            boss.name + " (Phase " + boss.phase + ")";
+
+    const percent = (boss.hp / boss.maxHP) * 100;
+    document.getElementById("hp").style.width = percent + "%";
+
+    // 🔥 Phase visual
+    if (boss.phase === 2) {
+      document.body.style.boxShadow = "0 0 50px red inset";
+    }
+
+    let html = "";
+    players.forEach(p => {
+      html += `<p>
+      ${p.id.slice(0,5)} |
+      ${p.dead ? "💀 DEAD" : "HP: "+p.hp} |
+      Shield: ${p.shield} |
+      Effects: ${p.effects.map(e=>e.type).join(",") || "None"}
+    </p>`;
+    });
+
+    document.getElementById("players").innerHTML = html;
+  });
+
+  socket.on("LOG", msg => {
+    log(msg);
+
+    // 💥 Shake on boss attack
+    if (msg.includes("hits") || msg.includes("Infernal")) {
+      document.body.classList.add("shake");
+      setTimeout(() => document.body.classList.remove("shake"), 300);
+    }
+
+    // 🌑 Phase flash
+    if (msg.includes("TRANSFORMS")) {
+      const flash = document.getElementById("flash");
+      flash.style.opacity = 0.6;
+      setTimeout(() => flash.style.opacity = 0, 300);
+    }
+  });
+
+  function act(type) {
+    socket.emit("ACTION", type);
+  }
+
+  function respawn() {
+    socket.emit("RESPAWN");
+  }
+
+  function log(msg) {
+    const div = document.getElementById("log");
+    div.innerHTML += "<p>" + msg + "</p>";
+    div.scrollTop = div.scrollHeight;
+  }
+</script><script>
+  const canvas = document.getElementById("vfx");
+  const ctx = canvas.getContext("2d");
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  let effects = [];
+
+  // ---------- BASE LOOP ----------
+  function loop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    effects.forEach((e, i) => {
+      e.update();
+      e.draw(ctx);
+      if (e.life <= 0) effects.splice(i, 1);
+    });
+
+    requestAnimationFrame(loop);
+  }
+  loop();
+
+  // ---------- EFFECT CLASSES ----------
+
+  // 🔥 FIRE EXPLOSION
+  function fireExplosion(x, y) {
+    for (let i = 0; i < 20; i++) {
+      effects.push({
+        x, y,
+        vx: (Math.random()-0.5)*6,
+        vy: (Math.random()-0.5)*6,
+        life: 30,
+        update() {
+          this.x += this.vx;
+          this.y += this.vy;
+          this.life--;
+        },
+        draw(ctx) {
+          ctx.fillStyle = "orange";
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, 5, 0, Math.PI*2);
+          ctx.fill();
+        }
+      });
+    }
+  }
+
+  // 🌑 VOID PULSE
+  function voidPulse() {
+    effects.push({
+      r: 0,
+      life: 30,
+      update() {
+        this.r += 20;
+        this.life--;
+      },
+      draw(ctx) {
+        ctx.strokeStyle = "purple";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(canvas.width/2, canvas.height/2, this.r, 0, Math.PI*2);
+        ctx.stroke();
+      }
+    });
+  }
+
+  // 💥 SLAM IMPACT
+  function slam() {
+    effects.push({
+      r: 0,
+      life: 15,
+      update() {
+        this.r += 30;
+        this.life--;
+      },
+      draw(ctx) {
+        ctx.strokeStyle = "red";
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.arc(canvas.width/2, canvas.height/2, this.r, 0, Math.PI*2);
+        ctx.stroke();
+      }
+    });
+  }
+
+  // 🔢 FLOATING DAMAGE
+  function damageText(text, x, y) {
+    effects.push({
+      x, y,
+      life: 40,
+      update() {
+        this.y -= 1;
+        this.life--;
+      },
+      draw(ctx) {
+        ctx.fillStyle = "white";
+        ctx.font = "20px Cinzel";
+        ctx.fillText(text, this.x, this.y);
+      }
+    });
+  }
+
+  // 😱 FEAR DISTORTION
+  function fearEffect() {
+    document.body.style.transform = "scale(1.05)";
+    setTimeout(() => {
+      document.body.style.transform = "scale(1)";
+    }, 200);
+  }
+
+  // ---------- HOOK INTO GAME ----------
+  socket.on("LOG", msg => {
+
+    // 🔥 Fire
+    if (msg.includes("Infernal")) {
+      fireExplosion(canvas.width/2, canvas.height/2);
+    }
+
+    // 🌑 Void
+    if (msg.includes("Void")) {
+      voidPulse();
+    }
+
+    // 💀 Execute
+    if (msg.includes("Execute")) {
+      slam();
+      damageText("CRITICAL", canvas.width/2, canvas.height/2);
+    }
+
+    // 😱 Fear
+    if (msg.includes("Fear")) {
+      fearEffect();
+    }
+
+    // ⚔ Generic hit
+    if (msg.includes("hits")) {
+      damageText("-20", Math.random()*canvas.width, Math.random()*canvas.height);
+    }
+  });
+</script><script>
+  // 🎬 INTRO SEQUENCE
+  function playIntro() {
+    const bars = document.querySelectorAll(".bar");
+    const text = document.getElementById("bossIntro");
+
+    // Close bars
+    bars.forEach(b => b.style.height = "15%");
+
+    // Show text
+    setTimeout(() => {
+      text.style.opacity = 1;
+    }, 500);
+
+    // Camera zoom
+    document.body.classList.add("zoom");
+
+    // End intro
+    setTimeout(() => {
+      text.style.opacity = 0;
+      bars.forEach(b => b.style.height = "0%");
+      document.body.classList.remove("zoom");
+    }, 3000);
+  }
+
+  // 🌑 PHASE 2 CINEMATIC
+  function phaseTransition() {
+    const flash = document.getElementById("flash");
+
+    flash.style.opacity = 0.8;
+
+    document.body.classList.add("zoom");
+
+    setTimeout(() => {
+      flash.style.opacity = 0;
+      document.body.classList.remove("zoom");
+
+      document.body.classList.add("phase2");
+    }, 500);
+  }
+
+  // 🎥 CAMERA SHAKE (stronger)
+  function cinematicShake() {
+    document.body.classList.add("shake");
+    setTimeout(() => document.body.classList.remove("shake"), 400);
+  }
+
+  <button onClick="bossTurn()">👹 Boss Turn</button>
+
+  <script>
+    function bossTurn() {
+    socket.emit("BOSS_TURN");
+  }
+</script>
+</script>
+
+</body>
+</html>
